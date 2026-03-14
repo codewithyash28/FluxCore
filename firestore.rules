@@ -1,0 +1,96 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: users
+// Document ID: userId (Firebase Auth UID)
+// Fields:
+//   - uid: string (required)
+//   - email: string (optional)
+//   - displayName: string (required)
+//   - githubUsername: string (optional)
+//   - gitlabUsername: string (optional)
+//   - createdAt: timestamp (required)
+//   - role: string (optional, default: 'user')
+//
+// Collection: audits
+// Document ID: auditId (Auto-generated)
+// Fields:
+//   - userId: string (required) - Reference to users collection
+//   - repoUrl: string (required)
+//   - healthScore: number (required)
+//   - optimizationPotential: number
+//   - energySavings: number
+//   - securitySeverity: string (enum: Low, Med, High, Critical)
+//   - regressionStatus: string (enum: Stable, Regression)
+//   - timestamp: timestamp (required)
+//   - findings: string
+//   - optimizedCode: string
+//   - ecoLogic: string
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "codewithyash28@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'createdAt']) &&
+             data.uid == request.auth.uid &&
+             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() < 100 &&
+             (!('email' in data) || (data.email is string && data.email.size() < 100)) &&
+             (!('githubUsername' in data) || (data.githubUsername == null || (data.githubUsername is string && data.githubUsername.size() < 100))) &&
+             (!('gitlabUsername' in data) || (data.gitlabUsername == null || (data.gitlabUsername is string && data.gitlabUsername.size() < 100))) &&
+             (!('policies' in data) || (
+               data.policies is map && 
+               data.policies.minHealthScore is number && 
+               data.policies.blockHighSecurity is bool
+             ));
+    }
+
+    function isValidAudit(data) {
+      return data.keys().hasAll(['userId', 'repoUrl', 'healthScore', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.healthScore is number && data.healthScore >= 0 && data.healthScore <= 1 &&
+             data.repoUrl is string && data.repoUrl.size() > 0 && data.repoUrl.size() < 500 &&
+             (!('securitySeverity' in data) || data.securitySeverity in ['Low', 'Med', 'High', 'Critical']) &&
+             (!('regressionStatus' in data) || data.regressionStatus in ['Stable', 'Regression']);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && (!('role' in request.resource.data) || request.resource.data.role == 'user');
+      allow update: if isAuthenticated() && (
+        (isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role) || 
+        isAdmin()
+      );
+    }
+
+    match /audits/{auditId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidAudit(request.resource.data);
+      allow update: if isAdmin(); // Only admins can update audits (e.g. for moderation)
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+  }
+}

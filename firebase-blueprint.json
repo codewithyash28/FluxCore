@@ -1,0 +1,53 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and authentication details.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "githubUsername": { "type": "string" },
+        "gitlabUsername": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "policies": {
+          "type": "object",
+          "properties": {
+            "minHealthScore": { "type": "number" },
+            "blockHighSecurity": { "type": "boolean" }
+          }
+        }
+      },
+      "required": ["uid", "displayName"]
+    },
+    "Audit": {
+      "title": "Audit",
+      "description": "CI/CD audit results for a specific repository push.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "repoUrl": { "type": "string" },
+        "healthScore": { "type": "number" },
+        "optimizationPotential": { "type": "number" },
+        "energySavings": { "type": "number" },
+        "securitySeverity": { "type": "string", "enum": ["Low", "Med", "High", "Critical"] },
+        "regressionStatus": { "type": "string", "enum": ["Stable", "Regression"] },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "findings": { "type": "string" },
+        "optimizedCode": { "type": "string" }
+      },
+      "required": ["userId", "repoUrl", "healthScore", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles."
+    },
+    "/audits/{auditId}": {
+      "schema": "Audit",
+      "description": "Audit history logs."
+    }
+  }
+}
