@@ -1,8 +1,6 @@
 # 🛡️ FluxCore AI: The Autonomous CI/CD Gatekeeper
 
-<p align="center">
-  <img src="vision.png" alt="FluxCore AI Vision" width="800px" />
-</p>
+
 
 > **Architecting the Future of Secure, Sustainable, and High-Performance Software Development.**
 
